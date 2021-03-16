@@ -27,12 +27,12 @@ public class App
                         .split().body()
                         .log(LoggingLevel.INFO, "${body}")
                         .setHeader(SolrConstants.OPERATION, constant(SolrConstants.OPERATION_ADD_BEAN))
-                        .to("solr://localhost:8984/solr/newcore")
+                        .to("solr://localhost:8983/solr/newcore")
                         .to("direct:commit");
 
                 from("direct:commit")
                         .setHeader(SolrConstants.OPERATION, constant(SolrConstants.OPERATION_COMMIT))
-                        .to("solr://localhost:8984/solr/newcore");
+                        .to("solr://localhost:8983/solr/newcore");
             }
         });
 

@@ -9,7 +9,6 @@ import static org.apache.camel.builder.PredicateBuilder.and;
 import static org.apache.camel.builder.PredicateBuilder.in;
 import static org.apache.camel.builder.PredicateBuilder.not;
 import static org.apache.camel.builder.PredicateBuilder.or;
-import static org.apache.camel.model.dataformat.JsonLibrary.Jackson;
 import static org.fcrepo.camel.FcrepoHeaders.FCREPO_EVENT_TYPE;
 import static org.fcrepo.camel.FcrepoHeaders.FCREPO_RESOURCE_TYPE;
 import static org.fcrepo.camel.FcrepoHeaders.FCREPO_URI;
@@ -20,10 +19,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.builder.xml.Namespaces;
-import org.apache.camel.builder.xml.XPathBuilder;
 import org.fcrepo.camel.processor.EventProcessor;
-import org.fcrepo.camel.processor.SparqlDeleteProcessor;
-import org.fcrepo.camel.processor.SparqlUpdateProcessor;
 import org.slf4j.Logger;
 
 /**
@@ -52,17 +48,17 @@ public class SolrRouter extends RouteBuilder {
     // The default `LDPath` transformation to use. This is overridden on a per-object
     // basis with the `indexing:hasIndexingTransformation` predicate unless
     // `fcrepo.checkHasIndexingTransformation` is false. This should be a public URL.
-    final String fcrepoDefaultTransform = "http://localhost:8181/program";
+    final String fcrepoDefaultTransform = "http://0.0.0.0:8181/program";
 
     // The location of the LDPath service.
-    final String ldpathServiceBaseUrl = "http://localhost:9086/ldpath";
+    final String ldpathServiceBaseUrl = "http://0.0.0.0:9086/ldpath";
 
     // The camel URI for handling reindexing events.
     final String solrReindexStream = "jms:queue:solr.reindex";
 
     // The baseUrl for the Solr server. If using Solr 4.x or better, the URL should include
     // the core name.
-    final String solrBaseUrl = "http4://localhost:8984/solr/newcore";
+    final String solrBaseUrl = "http4://0.0.0.0:8983/solr/openaccess";
 
     // The timeframe (in milliseconds) within which new items should be committed to the solr index.
     final int solrCommitWithin = 10000;
@@ -100,38 +96,6 @@ public class SolrRouter extends RouteBuilder {
                 .log("Index Routing Error: ${routeId}");
 
         // Starting route - getting data from activemq which fedora repo inserted
-
-
-        /*
-        // XPathBuilder xpath = new XPathBuilder("/rdf:RDF/rdf:Description/rdf:type[@rdf:resource='http://fedora.info/definitions/v4/indexing#Indexable']");
-        // xpath.namespace("dc", "http://purl.org/dc/elements/1.1/");
-
-        from(inputStream).routeId("FcrepoSolrRouter")
-                .log("We go things here")
-                .process(new EventProcessor())
-                .log("Event processor completed here")
-                .choice()
-                .when(header(FCREPO_EVENT_TYPE).contains("https://www.w3.org/ns/activitystreams#Delete"))
-                .to("direct:remove")
-                .when(and(
-                        not(header(FCREPO_RESOURCE_TYPE).contains("http://fedora.info/definitions/v4/repository#RepositoryRoot")),
-                        not(header(FCREPO_RESOURCE_TYPE).contains("http://fedora.info/definitions/v4/repository#TimeMap"))
-                ))
-                .to("direct:update");
-
-        from("direct:update").routeId("triplestore-updater")
-                .log("We are in update")
-                .to("fcrepo:localhost:8080/fcrepo/rest")
-                .log("${body}")
-                .log("We processed an update here");
-                // .to("http4:triplestore-host:8080/dataset/update");
-
-        // from("direct:remove").routeId("triplestore-remover")
-          //      .process(new SparqlDeleteProcessor())
-         //       .to("http4:triplestore-host:8080/dataset/update");
-        */
-
-
         from(inputStream)
                 .routeId("FcrepoSolrRouter")
                 .log("Getting data from the queue")
@@ -242,20 +206,5 @@ public class SolrRouter extends RouteBuilder {
                 .setHeader(HTTP_METHOD).constant("POST")
                 .setHeader(HTTP_QUERY).simple("commitWithin=10000")
                 .to(solrBaseUrl + "/update?useSystemProperties=true");
-        /*
-        // Using solar client to send data to solr instead
-        from("direct:send.to.solr").routeId("FcrepoSolrSend")
-                .log(LoggingLevel.INFO, "Sending data to solr here")
-                .log("${body}")
-                .removeHeaders("CamelHttp*")
-                .setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
-                .setHeader(HTTP_METHOD).constant("POST")
-                .log(LoggingLevel.INFO, "Sending data to solr here")
-                .log("${headers}")
-                .to("solr://localhost:8984/solr/newcore")
-                .log("${body}");
-
-         */
-
     }
 }
