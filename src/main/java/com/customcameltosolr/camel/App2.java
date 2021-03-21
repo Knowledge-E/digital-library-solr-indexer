@@ -12,7 +12,7 @@ public class App2
     {
         CamelContext context = new DefaultCamelContext();
 
-        ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("admin", "admin", "tcp://localhost:61616");
+        ConnectionFactory connectionFactory = new ActiveMQConnectionFactory("admin", "admin", "tcp://fedora-repository:61616");
         context.addComponent("jms", JmsComponent.jmsComponentAutoAcknowledge(connectionFactory));
 
         context.addRoutes(new SolrRouter());

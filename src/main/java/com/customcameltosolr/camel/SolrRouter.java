@@ -17,10 +17,14 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
+import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.builder.xml.Namespaces;
+import org.apache.jena.base.Sys;
 import org.fcrepo.camel.processor.EventProcessor;
 import org.slf4j.Logger;
+
+import java.io.UnsupportedEncodingException;
 
 /**
  * A content router for handling JMS events.
@@ -48,17 +52,17 @@ public class SolrRouter extends RouteBuilder {
     // The default `LDPath` transformation to use. This is overridden on a per-object
     // basis with the `indexing:hasIndexingTransformation` predicate unless
     // `fcrepo.checkHasIndexingTransformation` is false. This should be a public URL.
-    final String fcrepoDefaultTransform = "http://0.0.0.0:8181/program";
+    final String fcrepoDefaultTransform = "http://ldpath-program:8181/program";
 
     // The location of the LDPath service.
-    final String ldpathServiceBaseUrl = "http://0.0.0.0:9086/ldpath";
+    final String ldpathServiceBaseUrl = "http://ldpath:9086/ldpath";
 
     // The camel URI for handling reindexing events.
     final String solrReindexStream = "jms:queue:solr.reindex";
 
     // The baseUrl for the Solr server. If using Solr 4.x or better, the URL should include
     // the core name.
-    final String solrBaseUrl = "http4://0.0.0.0:8983/solr/openaccess";
+    final String solrBaseUrl = "http4://solr:8983/solr/openaccess";
 
     // The timeframe (in milliseconds) within which new items should be committed to the solr index.
     final int solrCommitWithin = 10000;
@@ -66,9 +70,9 @@ public class SolrRouter extends RouteBuilder {
     // A comma-delimited list of URIs to filter. That is, any Fedora resource that either
     // matches or is contained in one of the URIs listed will not be processed by the
     // fcrepo-indexing-solr application.
-    final String filterContainers = "http://localhost:8080/rest/audit";
+    final String filterContainers = "http://fedora-repository:8080/fcrepo/rest/audit";
 
-    final String fcRepoBaseUrl = "http://localhost:8080/rest";
+    final String fcRepoBaseUrl = "http://fedora-repository:8080/fcrepo/rest";
 
     private static final Logger logger = getLogger(SolrRouter.class);
 
@@ -118,6 +122,13 @@ public class SolrRouter extends RouteBuilder {
         from("direct:index.solr")
                 .routeId("FcrepoSolrIndexer")
                 .removeHeaders("CamelHttp*")
+                .process(new Processor() {
+                    public void process(Exchange exchange) throws Exception {
+                        String fcrepoUrl = exchange.getIn().getHeader("CamelFcrepoUri", String.class);
+                        exchange.getIn().setHeader("CamelFcrepoUri", fcrepoUrl.replace("localhost", "fedora-repository"));
+                    }
+                })
+                .setHeader("CamelFcrepoUri", constant("http://fedora-repository:8080/fcrepo/rest/ffc0d5b8-912c-4c3e-ba9e-322af0f47db4"))
                 .log("${headers}")
                 .filter(not(in(tokenizePropertyPlaceholder(getContext(), filterContainers, ",").stream()
                         .map(uri -> or(
@@ -131,6 +142,7 @@ public class SolrRouter extends RouteBuilder {
                         .to("direct:update.solr")
                     .otherwise()
                         .log("We are visiting fcrepo here")
+                        .log(fcRepoBaseUrl)
                         .to("fcrepo:" + fcRepoBaseUrl + "?preferOmit=PreferContainment")
                         .setHeader(INDEXING_TRANSFORMATION).xpath(hasIndexingTransformation, String.class, ns)
                 .choice()
