@@ -128,7 +128,6 @@ public class SolrRouter extends RouteBuilder {
                         exchange.getIn().setHeader("CamelFcrepoUri", fcrepoUrl.replace("localhost", "fedora-repository"));
                     }
                 })
-                .setHeader("CamelFcrepoUri", constant("http://fedora-repository:8080/fcrepo/rest/ffc0d5b8-912c-4c3e-ba9e-322af0f47db4"))
                 .log("${headers}")
                 .filter(not(in(tokenizePropertyPlaceholder(getContext(), filterContainers, ",").stream()
                         .map(uri -> or(
